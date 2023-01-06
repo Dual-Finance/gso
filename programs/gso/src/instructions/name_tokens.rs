@@ -43,7 +43,7 @@ pub fn name_tokens(ctx: Context<GSONameTokens>) -> Result<()> {
         ctx.accounts.x_base_mint.key(),
         token_name,
         symbol,
-        "https://www.dual.finance/images/token-logos/gso-collateral.png".to_string(),
+        "https://www.dual.finance/images/token-logos/gso-collateral".to_string(),
         None,
         0,
         true,
