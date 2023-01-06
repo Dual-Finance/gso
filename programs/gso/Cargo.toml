@@ -1,0 +1,26 @@
+[package]
+name = "gso"
+version = "0.0.3"
+description = "GSO created by DUAL Labs"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "gso"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.24.2"
+anchor-spl = "0.24.2"
+mpl-token-metadata =  {version = "1.4.0", features = ["no-entrypoint"]}
+solana-program = "1.9.9"
+solana-security-txt = "1.0.1"
+spl-token = {version = "3.1.1", features = ["no-entrypoint"]}
+staking_options = { version = "0.0.8", features = [ "no-entrypoint", "cpi"] }
+vipers = "^2.0"

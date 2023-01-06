@@ -1,0 +1,27 @@
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.localnet]
+gso = "DuALd6fooWzVDkaTsQzDAxPGYCnLrnWamdNNTNxicdX8"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test]
+startup_wait = 10_000
+
+[test.validator]
+url = "https://api.devnet.solana.com"
+
+# Metaplex
+[[test.validator.clone]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+[[test.validator.clone]]
+address = "PwDiXFxQsGra4sFFTT8r1QWRMd4vfumiWC1jfWNfdYT"
+
+# Staking options
+[[test.validator.clone]]
+address = "4yx1NJ4Vqf2zT1oVLk4SySBhhDJXmXFt88ncm4gPxtL7"
+[[test.validator.clone]]
+address = "F9LZi3etFc8iVvbrYKYEjiLH3i9baKgUyhn7q1NUhuuo"
