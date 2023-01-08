@@ -53,7 +53,7 @@ jobs:
 
       - name: Run Soteria
         run: |
-          cd programs/staking-options/ && soteria -analyzeAll . 2>&1 | tee audit.txt
+          cd programs/gso/ && soteria -analyzeAll . 2>&1 | tee audit.txt
           if grep -q "No vulnerabilities detected" audit.txt; then
             echo "No vulnerabilities detected";
           else
