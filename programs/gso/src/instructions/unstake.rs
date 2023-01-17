@@ -7,7 +7,7 @@ pub use crate::*;
 pub fn unstake(ctx: Context<GSOUnstake>, amount: u64) -> Result<()> {
     msg!("GSO Unstake");
     let now_ts: u64 = Clock::get().unwrap().unix_timestamp as u64;
-    let expiration: u64 = ctx.accounts.gso_state.subscription_period_end;
+    let expiration: u64 = ctx.accounts.gso_state.lockup_period_end;
     msg!("Now {} Expiration {}", now_ts, expiration);
     invariant!(expiration < now_ts, NotYetExpired);
 

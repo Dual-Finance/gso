@@ -26,7 +26,10 @@ describe('gso', () => {
   const metaplexId = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
   const soKey = new PublicKey('4yx1NJ4Vqf2zT1oVLk4SySBhhDJXmXFt88ncm4gPxtL7');
 
-  let optionExpiration: number = Date.now() / 1_000 + 150;
+  const EXPIRATION_DELAY_SEC: number = 100;
+  let optionExpiration: number = Date.now() / 1_000 + EXPIRATION_DELAY_SEC;
+  let lockupPeriodEnd: number = Date.now() / 1_000 + EXPIRATION_DELAY_SEC;
+  let subscriptionPeriodEnd: number = Date.now() / 1_000 + EXPIRATION_DELAY_SEC;
   const numTokensInPeriod: number = 1_000_000;
   const numStake: number = 1_000_000;
   const lockupRatioTokensPerMillionLots: number = 200_000;
@@ -45,7 +48,7 @@ describe('gso', () => {
   let userBaseAccount: PublicKey;
   let soUserOptionAccount: PublicKey;
 
-  async function configure() {
+  async function configure(lockupEndToSubscriptionPeriodOffset = 0) {
     console.log('Configuring');
     projectName = `TEST_${optionExpiration.toString()}`;
 
@@ -79,11 +82,16 @@ describe('gso', () => {
     soOptionMint = await soHelper.soMint(strikePrice, `GSO${projectName}`, soBaseMint);
 
     xBaseMint = await gsoHelper.xBaseMint(gsoState);
-    optionExpiration = Date.now() / 1_000 + 100;
+    subscriptionPeriodEnd = Date.now() / 1_000 + EXPIRATION_DELAY_SEC;
+    lockupPeriodEnd = subscriptionPeriodEnd + lockupEndToSubscriptionPeriodOffset;
+    optionExpiration = subscriptionPeriodEnd + lockupEndToSubscriptionPeriodOffset;
 
+    console.log('Creating config instruction');
     const configInstruction = await gsoHelper.createConfigInstruction(
       lockupRatioTokensPerMillionLots,
+      lockupPeriodEnd,
       optionExpiration,
+      subscriptionPeriodEnd,
       new anchor.BN(numTokensInPeriod),
       projectName,
       new anchor.BN(strikePrice),
@@ -95,6 +103,7 @@ describe('gso', () => {
       lotSize,
     );
 
+    console.log('Sending config instruction');
     const tx = new anchor.web3.Transaction();
     tx.add(configInstruction);
     await provider.send(tx);
@@ -259,7 +268,7 @@ describe('gso', () => {
     console.log('Waiting before unstake');
 
     // Wait to be sure the subscription period has ended.
-    await new Promise((r) => setTimeout(r, 120_000));
+    await new Promise((r) => setTimeout(r, EXPIRATION_DELAY_SEC * 1_000));
 
     try {
       await unstake();
@@ -285,16 +294,49 @@ describe('gso', () => {
     assert.equal(Number(soBaseAccountAccount.amount), numTokensInPeriod);
   });
 
-  it('UnstakeBeforeUnlock', async () => {
-    // 100_000 seconds in the future, so it should fail.
-    optionExpiration = Date.now() / 1000 + 100_000;
+  it('UnstakeBeforeUnlockFail', async () => {
     await configure();
     await stake();
+    // Do not wait until lockup has expired.
     try {
       await unstake();
       assert(false);
     } catch (err) {
       console.log(err);
+    }
+  });
+
+  it('UnstakeBetweenSubscriptionPeriodEndAndUnlockFail', async () => {
+    await configure(EXPIRATION_DELAY_SEC);
+    await stake();
+
+    // Only wait for the subscription period to end.
+    console.log('Waiting for subscription period to end');
+    await new Promise((r) => setTimeout(r, EXPIRATION_DELAY_SEC * 1_000));
+    try {
+      await unstake();
+      assert(false);
+    } catch (err) {
+      console.log(err);
+      assert(true);
+    }
+
+    console.log('Verifying subscription period ended');
+    try {
+      await stake();
+      assert(false);
+    } catch (err) {
+      console.log(err);
+      assert(true);
+    }
+
+    // After waiting more, it will succeed.
+    console.log('Waiting for lockup to end');
+    await new Promise((r) => setTimeout(r, EXPIRATION_DELAY_SEC * 1_000));
+    try {
+      await unstake();
+    } catch (err) {
+      assert(false);
     }
   });
 

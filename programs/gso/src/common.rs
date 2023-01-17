@@ -37,5 +37,8 @@ pub struct GSOState {
 
     // Base mint stored so it does not need to be on the.
     pub base_mint: Pubkey,
+
+    // Time in seconds for when users can unstake.
+    pub lockup_period_end: u64,
     // Padding
 }
