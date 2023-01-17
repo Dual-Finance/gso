@@ -1,15 +1,16 @@
-use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use staking_options::program::StakingOptions as StakingOptionsProgram;
 
 pub use crate::common::*;
 pub use crate::errors::ErrorCode;
+pub use crate::*;
 
 pub fn config(
     ctx: Context<GSOConfig>,
     // GSO Params
     period_num: u64,
     lockup_ratio_tokens_per_million: u64,
+    lockup_period_end: u64,
     // SO Config params
     option_expiration: u64,
     subscription_period_end: u64,
@@ -22,6 +23,11 @@ pub fn config(
     so_authority_bump: u8,
 ) -> Result<()> {
     msg!("GSO Config");
+
+    invariant!(
+        lockup_period_end >= subscription_period_end,
+        InvalidLockupEnd
+    );
 
     msg!("SO Config");
     let so_config_accounts = staking_options::cpi::accounts::Config {
@@ -95,6 +101,7 @@ pub fn config(
     ctx.accounts.gso_state.subscription_period_end = subscription_period_end;
     ctx.accounts.gso_state.authority = ctx.accounts.authority.key();
     ctx.accounts.gso_state.base_mint = ctx.accounts.so_base_mint.key();
+    ctx.accounts.gso_state.lockup_period_end = lockup_period_end;
 
     Ok(())
 }
@@ -104,6 +111,7 @@ pub fn config(
     // GSO Params
     period_num: u64,
     lockup_ratio_tokens_per_million: u64,
+    lockup_period_end: u64,
     // SO Config params
     option_expiration: u64,
     subscription_period_end: u64,

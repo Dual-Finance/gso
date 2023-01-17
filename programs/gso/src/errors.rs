@@ -7,4 +7,6 @@ use anchor_lang::prelude::*;
 pub enum ErrorCode {
     #[msg("Attempted to perform an action for a vault not yet expired")]
     NotYetExpired,
+    #[msg("Lockup end cannot be before subscription period end")]
+    InvalidLockupEnd,
 }
