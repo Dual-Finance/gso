@@ -8,8 +8,16 @@ pub fn unstake(ctx: Context<GSOUnstake>, amount: u64) -> Result<()> {
     msg!("GSO Unstake");
     let now_ts: u64 = Clock::get().unwrap().unix_timestamp as u64;
     let expiration: u64 = ctx.accounts.gso_state.lockup_period_end;
-    msg!("Now {} Expiration {}", now_ts, expiration);
-    invariant!(expiration < now_ts, NotYetExpired);
+    if expiration > 0 {
+        msg!("Now {} Expiration {}", now_ts, expiration);
+        invariant!(expiration < now_ts, NotYetExpired);
+    } else {
+        // TODO: Remove this once all GSOState has a lockup_period_end. This is
+        // for backwards compatibility only.
+        let old_expiration: u64 = ctx.accounts.gso_state.subscription_period_end;
+        msg!("Now {} Expiration {}", now_ts, old_expiration);
+        invariant!(old_expiration < now_ts, NotYetExpired);
+    }
 
     msg!("Burn xTokens");
     anchor_spl::token::burn(
