@@ -34,7 +34,9 @@ pub fn withdraw(ctx: Context<GSOWithdraw>) -> Result<()> {
 #[derive(Accounts)]
 #[instruction()]
 pub struct GSOWithdraw<'info> {
-    #[account(mut, constraint = authority.key() == gso_state.authority.key())]
+    // Temporary hack to handle gso states without an authority.
+    #[account(mut, constraint = authority.key() == gso_state.authority.key() ||
+        gso_state.authority.key().to_string() == "11111111111111111111111111111111111111111111")]
     pub authority: Signer<'info>,
 
     #[account(
