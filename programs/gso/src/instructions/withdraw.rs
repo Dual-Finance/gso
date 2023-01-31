@@ -34,13 +34,13 @@ pub fn withdraw(ctx: Context<GSOWithdraw>) -> Result<()> {
 #[derive(Accounts)]
 #[instruction()]
 pub struct GSOWithdraw<'info> {
-    // Temporary hack to handle gso states without an authority.
     #[account(mut)]
     pub authority: Signer<'info>,
 
     #[account(
         seeds = [GSO_STATE_SEED, &gso_state.period_num.to_be_bytes(), &gso_state.project_name.as_bytes()],
-        bump = gso_state.gso_state_bump)]
+        bump = gso_state.gso_state_bump,
+        constraint = gso_state.authority.key() == authority.key())]
     pub gso_state: Box<Account<'info, GSOState>>,
 
     /// CHECK: Not dangerous. Just an AccountInfo for signing.
