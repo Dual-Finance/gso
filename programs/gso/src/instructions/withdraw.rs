@@ -40,8 +40,7 @@ pub struct GSOWithdraw<'info> {
 
     #[account(
         seeds = [GSO_STATE_SEED, &gso_state.period_num.to_be_bytes(), &gso_state.project_name.as_bytes()],
-        bump = gso_state.gso_state_bump,
-        constraint = gso_state.authority.key() == authority.key())]
+        bump = gso_state.gso_state_bump)]
     pub gso_state: Box<Account<'info, GSOState>>,
 
     /// CHECK: Not dangerous. Just an AccountInfo for signing.
