@@ -506,7 +506,7 @@ describe('gso', () => {
     const stakeTx = new anchor.web3.Transaction();
     stakeTx.add(stakeInstruction);
     try {
-      await provider.send(stakeTx, null, { skipPreflight: true });
+      await provider.send(stakeTx);
     } catch (err) {
       console.log('err staking', err);
       assert(false)
