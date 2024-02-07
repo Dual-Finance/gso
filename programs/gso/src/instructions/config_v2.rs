@@ -172,7 +172,7 @@ pub struct GSOConfigV2<'info> {
         mint::decimals = so_base_mint.decimals,
         mint::authority = x_base_mint)]
     pub x_base_mint: Box<Account<'info, Mint>>,
-    
+
     // This is the difference with v1, the lockup mint can be different from the
     // SO base mint.
     pub lockup_mint: Box<Account<'info, Mint>>,

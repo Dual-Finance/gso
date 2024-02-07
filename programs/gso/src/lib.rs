@@ -35,7 +35,7 @@ pub mod gso {
     // Note that GSO is a legacy name, it is a less general version of staking
     // options. GSO is a specific implementation of a use case of the SO
     // primitive.
-        // Config. Minimal management in the GSO wrapper, most of the config work is
+    // Config. Minimal management in the GSO wrapper, most of the config work is
     // done in staking options itself.
     pub fn config(
         ctx: Context<GSOConfig>,
@@ -64,7 +64,7 @@ pub mod gso {
             so_authority_bump,
         )
     }
-    
+
     // ConfigV2. Same as config except that the SO base mint does not need to be
     // the same as the lockup mint.
     pub fn config_v2(
