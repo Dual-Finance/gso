@@ -504,10 +504,10 @@ describe('gso', () => {
     const stakeTx = new anchor.web3.Transaction();
     stakeTx.add(stakeInstruction);
     try {
-      await provider.send(stakeTx);
+      await provider.send(stakeTx, null, { skipPreflight: true });
     } catch (err) {
       console.log('err staking', err);
-      assert(false);
+      assert(false)
     }
 
     // Wait to be sure the subscription period has ended.
