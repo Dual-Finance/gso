@@ -35,8 +35,7 @@ pub mod gso {
     // Note that GSO is a legacy name, it is a less general version of staking
     // options. GSO is a specific implementation of a use case of the SO
     // primitive.
-
-    // Config. Minimal management in the GSO wrapper, most of the config work is
+        // Config. Minimal management in the GSO wrapper, most of the config work is
     // done in staking options itself.
     pub fn config(
         ctx: Context<GSOConfig>,
@@ -52,6 +51,36 @@ pub mod gso {
         so_authority_bump: u8,
     ) -> Result<()> {
         config::config(
+            ctx,
+            period_num,
+            lockup_ratio_tokens_per_million,
+            lockup_period_end,
+            option_expiration,
+            subscription_period_end,
+            lot_size,
+            num_tokens,
+            project_name,
+            strike_price,
+            so_authority_bump,
+        )
+    }
+    
+    // ConfigV2. Same as config except that the SO base mint does not need to be
+    // the same as the lockup mint.
+    pub fn config_v2(
+        ctx: Context<GSOConfigV2>,
+        period_num: u64,
+        lockup_ratio_tokens_per_million: u64,
+        lockup_period_end: u64,
+        option_expiration: u64,
+        subscription_period_end: u64,
+        lot_size: u64,
+        num_tokens: u64,
+        project_name: String,
+        strike_price: u64,
+        so_authority_bump: u8,
+    ) -> Result<()> {
+        config_v2::config_v2(
             ctx,
             period_num,
             lockup_ratio_tokens_per_million,

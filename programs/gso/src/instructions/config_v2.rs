@@ -180,7 +180,7 @@ pub struct GSOConfigV2<'info> {
         init,
         payer = authority,
         seeds = [BASE_VAULT_SEED, &gso_state.key().to_bytes()],
-        token::mint = so_base_mint,
+        token::mint = lockup_mint,
         token::authority = base_vault,
         bump
     )]

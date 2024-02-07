@@ -1,15 +1,17 @@
 import assert from 'assert';
 import { PublicKey } from '@solana/web3.js';
-import { Provider } from '@project-serum/anchor';
+import { BN, Program, Provider, utils, web3 } from '@project-serum/anchor';
 import { Metaplex } from '@metaplex-foundation/js';
 import { GSO } from '@dual-finance/gso';
-import { StakingOptions } from '@dual-finance/staking-options';
+import { StakingOptions, STAKING_OPTIONS_PK} from '@dual-finance/staking-options';
 import {
   createMint,
   createAssociatedTokenAccount,
   createTokenAccount,
   mintToAccount,
 } from './utils/utils';
+import { Gso as GSO_type } from '../target/types/gso';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 const { getAccount } = require('@solana/spl-token');
 
@@ -354,5 +356,115 @@ describe('gso', () => {
 
     const xNft = await metaplex.nfts().findByMint({ mintAddress: xBaseMint });
     assert.equal(xNft.name, `DUAL-GSO-${projectName}`.substring(0, 24));
+  });
+
+  it('ConfigV2e2e', async () => {
+    console.log('Configuring V2');
+    projectName = `TEST_${optionExpiration.toString()}`;
+
+    gsoState = await gsoHelper.state(projectName);
+    soBaseMint = await createMint(provider, undefined);
+    soQuoteMint = await createMint(provider, undefined);
+
+    console.log('Creating base account');
+    soBaseAccount = await createAssociatedTokenAccount(
+      provider,
+      soBaseMint,
+      provider.wallet.publicKey,
+    );
+    console.log('Minting base tokens');
+    await mintToAccount(
+      provider,
+      soBaseMint,
+      soBaseAccount,
+      new anchor.BN(numTokensInPeriod),
+      provider.wallet.publicKey,
+    );
+
+    console.log('Creating quote account');
+    soQuoteAccount = await createAssociatedTokenAccount(
+      provider,
+      soQuoteMint,
+      provider.wallet.publicKey,
+    );
+
+    console.log('Creating config v2 instruction');
+
+    const lockupRatioPerMillionLots = lockupRatioTokensPerMillionLots;
+    const numTokensAtoms = new anchor.BN(numTokensInPeriod);
+    const strikeAtomsPerLot = new anchor.BN(strikePrice);
+    const authority = provider.wallet.publicKey;
+
+    const xBaseMint = await gsoHelper.xBaseMint(gsoState);
+    subscriptionPeriodEnd = Date.now() / 1_000 + EXPIRATION_DELAY_SEC;
+    lockupPeriodEnd = subscriptionPeriodEnd;
+    optionExpiration = subscriptionPeriodEnd;
+
+    console.log('Creating config instruction');
+
+    const [soAuthority, soAuthorityBump] = await web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('gso')),
+        gsoState.toBuffer(),
+      ],
+      program.programId,
+    );
+    const so = new StakingOptions(provider.connection.rpcEndpoint);
+
+    const soState = await so.state(`GSO${projectName}`, soBaseMint);
+    const soBaseVault = await so.baseVault(`GSO${projectName}`, soBaseMint);
+    const soOptionMint = await so.soMint(strikeAtomsPerLot, `GSO${projectName}`, soBaseMint);
+    const baseVault = await gsoHelper.baseVault(gsoState);
+
+    console.log('Sending config instruction');
+    const otherMint = await createMint(provider, undefined);
+
+    await program.rpc.configV2(
+      new BN(1), /* period_num */
+      new BN(lockupRatioPerMillionLots),
+      new BN(lockupPeriodEnd),
+      new BN(optionExpiration),
+      new BN(subscriptionPeriodEnd),
+      new BN(lotSize),
+      numTokensAtoms,
+      projectName,
+      new BN(strikeAtomsPerLot),
+      soAuthorityBump,
+      {
+        accounts: {
+          authority,
+          gsoState,
+          soAuthority,
+          soState,
+          soBaseVault,
+          soBaseAccount: soBaseAccount,
+          soQuoteAccount: soQuoteAccount,
+          soBaseMint: otherMint,
+          soQuoteMint: soQuoteMint,
+          soOptionMint,
+          xBaseMint,
+          baseVault,
+          lockupMint: soBaseMint,
+          stakingOptionsProgram: STAKING_OPTIONS_PK,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: web3.SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+        },
+      },
+    );
+
+    await stake();
+
+    // Wait to be sure the subscription period has ended.
+    await new Promise((r) => setTimeout(r, EXPIRATION_DELAY_SEC * 1_000));
+
+    try {
+      await unstake();
+    } catch (err) {
+      console.log(err);
+      assert(false);
+    }
+    const userBaseAccountAccount = await getAccount(provider.connection, userBaseAccount);
+    assert.equal(userBaseAccountAccount.amount, numStake);
   });
 });
