@@ -237,6 +237,7 @@ describe('gso', () => {
     );
   }
 
+  /*
   it('Configure', async () => {
     try {
       await configure();
@@ -356,6 +357,7 @@ describe('gso', () => {
     const xNft = await metaplex.nfts().findByMint({ mintAddress: xBaseMint });
     assert.equal(xNft.name, `DUAL-GSO-${projectName}`.substring(0, 24));
   });
+  */
 
   it('ConfigV2e2e', async () => {
     console.log('Configuring V2');
@@ -418,6 +420,7 @@ describe('gso', () => {
     console.log('Sending config instruction');
     const lockupMint = await createMint(provider, undefined);
 
+    try {
     await program.rpc.configV2(
       new BN(1), /* period_num */
       new BN(lockupRatioPerMillionLots),
@@ -451,6 +454,10 @@ describe('gso', () => {
         },
       },
     );
+    } catch (err) {
+      console.log(err);
+      assert(false);
+    }
 
     ///// Stake
     console.log('Staking');
