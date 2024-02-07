@@ -10,7 +10,6 @@ import {
   createTokenAccount,
   mintToAccount,
 } from './utils/utils';
-import { Gso as GSO_type } from '../target/types/gso';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 const { getAccount } = require('@solana/spl-token');
@@ -417,7 +416,7 @@ describe('gso', () => {
     const baseVault = await gsoHelper.baseVault(gsoState);
 
     console.log('Sending config instruction');
-    const otherMint = await createMint(provider, undefined);
+    const lockupMint = await createMint(provider, undefined);
 
     await program.rpc.configV2(
       new BN(1), /* period_num */
@@ -437,14 +436,14 @@ describe('gso', () => {
           soAuthority,
           soState,
           soBaseVault,
-          soBaseAccount: soBaseAccount,
-          soQuoteAccount: soQuoteAccount,
-          soBaseMint: otherMint,
-          soQuoteMint: soQuoteMint,
+          soBaseAccount,
+          soQuoteAccount,
+          soBaseMint,
+          soQuoteMint,
           soOptionMint,
           xBaseMint,
           baseVault,
-          lockupMint: soBaseMint,
+          lockupMint,
           stakingOptionsProgram: STAKING_OPTIONS_PK,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: web3.SystemProgram.programId,
@@ -453,18 +452,65 @@ describe('gso', () => {
       },
     );
 
-    await stake();
+    ///// Stake
+    console.log('Staking');
+
+    // This is another account, not the same as used before.
+    const userLockupAccount = await createTokenAccount(
+      provider,
+      soBaseMint,
+      provider.wallet.publicKey,
+    );
+    await mintToAccount(
+      provider,
+      lockupMint,
+      userLockupAccount,
+      new anchor.BN(numStake),
+      provider.wallet.publicKey,
+    );
+
+    console.log('Creating option account');
+    soUserOptionAccount = await createAssociatedTokenAccount(
+      provider,
+      soOptionMint,
+      provider.wallet.publicKey,
+    );
+
+    console.log('Creating xbase account');
+    // userXBaseAccount
+    await createAssociatedTokenAccount(
+      provider,
+      xBaseMint,
+      provider.wallet.publicKey,
+    );
+
+    console.log('Creating stake instruction');
+    const stakeInstruction = await gsoHelper.createStakeInstruction(
+      numStake,
+      projectName,
+      provider.wallet.publicKey,
+      soBaseMint,
+      userLockupAccount,
+    );
+
+    const stakeTx = new anchor.web3.Transaction();
+    stakeTx.add(stakeInstruction);
+    await provider.send(stakeTx);
 
     // Wait to be sure the subscription period has ended.
     await new Promise((r) => setTimeout(r, EXPIRATION_DELAY_SEC * 1_000));
 
-    try {
-      await unstake();
-    } catch (err) {
-      console.log(err);
-      assert(false);
-    }
-    const userBaseAccountAccount = await getAccount(provider.connection, userBaseAccount);
-    assert.equal(userBaseAccountAccount.amount, numStake);
+    console.log('Unstaking');
+
+    const unstakeInstruction = await gsoHelper.createUnstakeInstruction(
+      numStake,
+      projectName,
+      provider.wallet.publicKey,
+      userLockupAccount,
+    );
+
+    const unstakeTx = new anchor.web3.Transaction();
+    unstakeTx.add(unstakeInstruction);
+    await provider.send(unstakeTx);
   });
 });
