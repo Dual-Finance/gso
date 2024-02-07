@@ -454,6 +454,7 @@ describe('gso', () => {
         },
       },
     );
+      console.log('Config success');
     } catch (err) {
       console.log(err);
       assert(false);
@@ -502,7 +503,12 @@ describe('gso', () => {
 
     const stakeTx = new anchor.web3.Transaction();
     stakeTx.add(stakeInstruction);
-    await provider.send(stakeTx);
+    try {
+      await provider.send(stakeTx);
+    } catch (err) {
+      console.log('err staking', err);
+      assert(false);
+    }
 
     // Wait to be sure the subscription period has ended.
     await new Promise((r) => setTimeout(r, EXPIRATION_DELAY_SEC * 1_000));
