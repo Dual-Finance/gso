@@ -1,9 +1,12 @@
 import assert from 'assert';
 import { PublicKey } from '@solana/web3.js';
-import { Provider } from '@project-serum/anchor';
+import {
+  BN, Program, Provider, utils, web3,
+} from '@project-serum/anchor';
 import { Metaplex } from '@metaplex-foundation/js';
 import { GSO } from '@dual-finance/gso';
-import { StakingOptions } from '@dual-finance/staking-options';
+import { StakingOptions, STAKING_OPTIONS_PK } from '@dual-finance/staking-options';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import {
   createMint,
   createAssociatedTokenAccount,
@@ -354,5 +357,175 @@ describe('gso', () => {
 
     const xNft = await metaplex.nfts().findByMint({ mintAddress: xBaseMint });
     assert.equal(xNft.name, `DUAL-GSO-${projectName}`.substring(0, 24));
+  });
+
+  it('ConfigV2e2e', async () => {
+    console.log('Configuring V2');
+    projectName = `TEST_${optionExpiration.toString()}`;
+
+    gsoState = await gsoHelper.state(projectName);
+    soBaseMint = await createMint(provider, undefined);
+    soQuoteMint = await createMint(provider, undefined);
+
+    console.log('Creating base account');
+    soBaseAccount = await createAssociatedTokenAccount(
+      provider,
+      soBaseMint,
+      provider.wallet.publicKey,
+    );
+    console.log('Minting base tokens');
+    await mintToAccount(
+      provider,
+      soBaseMint,
+      soBaseAccount,
+      new anchor.BN(numTokensInPeriod),
+      provider.wallet.publicKey,
+    );
+
+    console.log('Creating quote account');
+    soQuoteAccount = await createAssociatedTokenAccount(
+      provider,
+      soQuoteMint,
+      provider.wallet.publicKey,
+    );
+
+    console.log('Creating config v2 instruction');
+
+    const lockupRatioPerMillionLots = lockupRatioTokensPerMillionLots;
+    const numTokensAtoms = new anchor.BN(numTokensInPeriod);
+    const strikeAtomsPerLot = new anchor.BN(strikePrice);
+    const authority = provider.wallet.publicKey;
+
+    xBaseMint = await gsoHelper.xBaseMint(gsoState);
+    subscriptionPeriodEnd = Date.now() / 1_000 + EXPIRATION_DELAY_SEC;
+    lockupPeriodEnd = subscriptionPeriodEnd;
+    optionExpiration = subscriptionPeriodEnd;
+
+    console.log('Creating config instruction');
+
+    const [soAuthority, soAuthorityBump] = await web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('gso')),
+        gsoState.toBuffer(),
+      ],
+      program.programId,
+    );
+    const so = new StakingOptions(provider.connection.rpcEndpoint);
+
+    const soState = await so.state(`GSO${projectName}`, soBaseMint);
+    const soBaseVault = await so.baseVault(`GSO${projectName}`, soBaseMint);
+    soOptionMint = await so.soMint(strikeAtomsPerLot, `GSO${projectName}`, soBaseMint);
+    const baseVault = await gsoHelper.baseVault(gsoState);
+
+    console.log('Sending config instruction');
+    const lockupMint = await createMint(provider, undefined);
+
+    try {
+      await program.rpc.configV2(
+        new BN(1), /* period_num */
+        new BN(lockupRatioPerMillionLots),
+        new BN(lockupPeriodEnd),
+        new BN(optionExpiration),
+        new BN(subscriptionPeriodEnd),
+        new BN(lotSize),
+        numTokensAtoms,
+        projectName,
+        new BN(strikeAtomsPerLot),
+        soAuthorityBump,
+        {
+          accounts: {
+            authority,
+            gsoState,
+            soAuthority,
+            soState,
+            soBaseVault,
+            soBaseAccount,
+            soQuoteAccount,
+            soBaseMint,
+            soQuoteMint,
+            soOptionMint,
+            xBaseMint,
+            baseVault,
+            lockupMint,
+            stakingOptionsProgram: STAKING_OPTIONS_PK,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            systemProgram: web3.SystemProgram.programId,
+            rent: web3.SYSVAR_RENT_PUBKEY,
+          },
+        },
+      );
+      console.log('Config success');
+    } catch (err) {
+      console.log(err);
+      assert(false);
+    }
+
+    /// // Stake
+    console.log('Staking');
+
+    console.log('Creating lockup account');
+    // This is another account, not the same as used before.
+    const userLockupAccount = await createTokenAccount(
+      provider,
+      lockupMint,
+      provider.wallet.publicKey,
+    );
+    console.log('Mintinig to user lockup account');
+    await mintToAccount(
+      provider,
+      lockupMint,
+      userLockupAccount,
+      new anchor.BN(numStake),
+      provider.wallet.publicKey,
+    );
+
+    console.log('Creating option account');
+    soUserOptionAccount = await createAssociatedTokenAccount(
+      provider,
+      soOptionMint,
+      provider.wallet.publicKey,
+    );
+
+    console.log('Creating xbase account');
+    // userXBaseAccount
+    await createAssociatedTokenAccount(
+      provider,
+      xBaseMint,
+      provider.wallet.publicKey,
+    );
+
+    console.log('Creating stake instruction');
+    const stakeInstruction = await gsoHelper.createStakeInstruction(
+      numStake,
+      projectName,
+      provider.wallet.publicKey,
+      soBaseMint,
+      userLockupAccount,
+    );
+
+    const stakeTx = new anchor.web3.Transaction();
+    stakeTx.add(stakeInstruction);
+    try {
+      await provider.send(stakeTx);
+    } catch (err) {
+      console.log('err staking', err);
+      assert(false);
+    }
+
+    // Wait to be sure the subscription period has ended.
+    await new Promise((r) => setTimeout(r, EXPIRATION_DELAY_SEC * 1_000));
+
+    console.log('Unstaking');
+
+    const unstakeInstruction = await gsoHelper.createUnstakeInstruction(
+      numStake,
+      projectName,
+      provider.wallet.publicKey,
+      userLockupAccount,
+    );
+
+    const unstakeTx = new anchor.web3.Transaction();
+    unstakeTx.add(unstakeInstruction);
+    await provider.send(unstakeTx);
   });
 });
