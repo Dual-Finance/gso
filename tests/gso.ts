@@ -463,12 +463,14 @@ describe('gso', () => {
     ///// Stake
     console.log('Staking');
 
+    console.log('Creating lockup account');
     // This is another account, not the same as used before.
     const userLockupAccount = await createTokenAccount(
       provider,
-      soBaseMint,
+      lockupMint,
       provider.wallet.publicKey,
     );
+    console.log('Mintinig to user lockup account');
     await mintToAccount(
       provider,
       lockupMint,
