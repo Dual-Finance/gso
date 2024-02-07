@@ -1,16 +1,18 @@
 import assert from 'assert';
 import { PublicKey } from '@solana/web3.js';
-import { BN, Program, Provider, utils, web3 } from '@project-serum/anchor';
+import {
+  BN, Program, Provider, utils, web3,
+} from '@project-serum/anchor';
 import { Metaplex } from '@metaplex-foundation/js';
 import { GSO } from '@dual-finance/gso';
-import { StakingOptions, STAKING_OPTIONS_PK} from '@dual-finance/staking-options';
+import { StakingOptions, STAKING_OPTIONS_PK } from '@dual-finance/staking-options';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import {
   createMint,
   createAssociatedTokenAccount,
   createTokenAccount,
   mintToAccount,
 } from './utils/utils';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 const { getAccount } = require('@solana/spl-token');
 
@@ -237,7 +239,6 @@ describe('gso', () => {
     );
   }
 
-  /*
   it('Configure', async () => {
     try {
       await configure();
@@ -357,7 +358,6 @@ describe('gso', () => {
     const xNft = await metaplex.nfts().findByMint({ mintAddress: xBaseMint });
     assert.equal(xNft.name, `DUAL-GSO-${projectName}`.substring(0, 24));
   });
-  */
 
   it('ConfigV2e2e', async () => {
     console.log('Configuring V2');
@@ -396,7 +396,7 @@ describe('gso', () => {
     const strikeAtomsPerLot = new anchor.BN(strikePrice);
     const authority = provider.wallet.publicKey;
 
-    const xBaseMint = await gsoHelper.xBaseMint(gsoState);
+    xBaseMint = await gsoHelper.xBaseMint(gsoState);
     subscriptionPeriodEnd = Date.now() / 1_000 + EXPIRATION_DELAY_SEC;
     lockupPeriodEnd = subscriptionPeriodEnd;
     optionExpiration = subscriptionPeriodEnd;
@@ -414,53 +414,53 @@ describe('gso', () => {
 
     const soState = await so.state(`GSO${projectName}`, soBaseMint);
     const soBaseVault = await so.baseVault(`GSO${projectName}`, soBaseMint);
-    const soOptionMint = await so.soMint(strikeAtomsPerLot, `GSO${projectName}`, soBaseMint);
+    soOptionMint = await so.soMint(strikeAtomsPerLot, `GSO${projectName}`, soBaseMint);
     const baseVault = await gsoHelper.baseVault(gsoState);
 
     console.log('Sending config instruction');
     const lockupMint = await createMint(provider, undefined);
 
     try {
-    await program.rpc.configV2(
-      new BN(1), /* period_num */
-      new BN(lockupRatioPerMillionLots),
-      new BN(lockupPeriodEnd),
-      new BN(optionExpiration),
-      new BN(subscriptionPeriodEnd),
-      new BN(lotSize),
-      numTokensAtoms,
-      projectName,
-      new BN(strikeAtomsPerLot),
-      soAuthorityBump,
-      {
-        accounts: {
-          authority,
-          gsoState,
-          soAuthority,
-          soState,
-          soBaseVault,
-          soBaseAccount,
-          soQuoteAccount,
-          soBaseMint,
-          soQuoteMint,
-          soOptionMint,
-          xBaseMint,
-          baseVault,
-          lockupMint,
-          stakingOptionsProgram: STAKING_OPTIONS_PK,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: web3.SystemProgram.programId,
-          rent: web3.SYSVAR_RENT_PUBKEY,
+      await program.rpc.configV2(
+        new BN(1), /* period_num */
+        new BN(lockupRatioPerMillionLots),
+        new BN(lockupPeriodEnd),
+        new BN(optionExpiration),
+        new BN(subscriptionPeriodEnd),
+        new BN(lotSize),
+        numTokensAtoms,
+        projectName,
+        new BN(strikeAtomsPerLot),
+        soAuthorityBump,
+        {
+          accounts: {
+            authority,
+            gsoState,
+            soAuthority,
+            soState,
+            soBaseVault,
+            soBaseAccount,
+            soQuoteAccount,
+            soBaseMint,
+            soQuoteMint,
+            soOptionMint,
+            xBaseMint,
+            baseVault,
+            lockupMint,
+            stakingOptionsProgram: STAKING_OPTIONS_PK,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            systemProgram: web3.SystemProgram.programId,
+            rent: web3.SYSVAR_RENT_PUBKEY,
+          },
         },
-      },
-    );
+      );
       console.log('Config success');
     } catch (err) {
       console.log(err);
       assert(false);
     }
 
-    ///// Stake
+    /// // Stake
     console.log('Staking');
 
     console.log('Creating lockup account');
@@ -509,7 +509,7 @@ describe('gso', () => {
       await provider.send(stakeTx);
     } catch (err) {
       console.log('err staking', err);
-      assert(false)
+      assert(false);
     }
 
     // Wait to be sure the subscription period has ended.
